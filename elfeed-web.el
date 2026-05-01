@@ -4,7 +4,7 @@
 
 ;; Author: Christopher Wellons <wellons@nullprogram.com>
 ;; Maintainer: Karthik Chikmagalur <karthik.chikmagalur@gmail.com>, Ihor Radchenko <yantar92@posteo.net>, Daniel Mendler <mail@daniel-mendler.de>
-;; URL: https://github.com/skeeto/elfeed
+;; URL: https://github.com/emacs-elfeed/elfeed-web
 ;; Version: 3.4.2
 ;; Package-Requires: ((emacs "28.1") (compat "30") (elfeed "3.4.2") (simple-httpd "1.5.1"))
 ;; Keywords: network, hypermedia
