@@ -1,70 +1,242 @@
-<!DOCTYPE html>
-<html ng-app>
+<!doctype html>
+<html lang="en">
   <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Elfeed Web</title>
-    <link rel="stylesheet" href="//cdn.jsdelivr.net/foundation/4.3.1/css/foundation.min.css"/>
-    <link rel="stylesheet" href="elfeed.css"/>
-    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/URI.js/1.7.2/URI.min.js"></script>
-    <script src="elfeed.js"></script>
+    <style>
+      * {
+          box-sizing: border-box;
+      }
+      html, body {
+          height: 100%;
+          margin: 0;
+      }
+      body {
+          font: 14px system-ui, sans-serif;
+          display: grid;
+          grid-template-rows: auto 1fr;
+          overflow: hidden;
+      }
+      header {
+          padding: 1rem;
+      }
+      .title {
+          margin: 0 0 .75rem 0;
+          font-size: 1.2rem;
+      }
+      .toolbar {
+          display: flex;
+          gap: .5rem;
+          margin-bottom: .75rem;
+      }
+      input {
+          flex: 1;
+          padding: .5rem;
+          font: inherit;
+      }
+      button {
+          padding: .5rem .75rem;
+          font: inherit;
+          cursor: pointer;
+      }
+      main {
+          padding: 0 1rem 1rem;
+          display: grid;
+          grid-template-columns: 24rem 1fr;
+          gap: 1rem;
+          min-height: 0;
+      }
+      .sidebar, .viewer {
+          min-height: 0;
+      }
+      #entries {
+          height: 100%;
+          overflow: auto;
+          border: 1px solid #ddd;
+          padding: .5rem;
+      }
+      .entry {
+          display: block;
+          padding: .5rem;
+          border-bottom: 1px solid #eee;
+          color: inherit;
+          text-decoration: none;
+          cursor: pointer;
+      }
+      .entry:last-child {
+          border-bottom: 0;
+      }
+      .entry:hover {
+          background: #f6f6f6;
+      }
+      .selected {
+          background: #e9f2ff;
+      }
+      .unread {
+          font-weight: 700;
+      }
+      .meta {
+          color: #666;
+          font-size: .9em;
+          margin-bottom: .2rem;
+          display: flex;
+          align-items: center;
+          gap: .35rem;
+      }
+      .favicon {
+          width: 16px;
+          height: 16px;
+          flex: 0 0 16px;
+      }
+      .viewer {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+      }
+      #title {
+          margin: 0 0 .75rem 0;
+          font-size: 1rem;
+          font-weight: 600;
+          flex: 0 0 auto;
+      }
+      iframe {
+          width: 100%;
+          flex: 1 1 auto;
+          min-height: 0;
+          border: 1px solid #ddd;
+      }
+      #empty {
+          color: #666;
+          font-style: italic;
+          padding: .5rem;
+      }
+      @media (max-width: 800px) {
+          body {
+              display: block;
+              overflow: auto;
+          }
+          main {
+              grid-template-columns: 1fr;
+          }
+          iframe {
+              height: 60vh;
+          }
+      }
+    </style>
   </head>
   <body>
-
-    <div class="row">
-      <div class="twelve columns centered panel radius">
-        <h4>Emacs Elfeed</h4>
+    <header>
+      <h1 class="title">Elfeed Web</h1>
+      <div class="toolbar">
+        <input id="query" type="text" placeholder="Search">
+        <button type="button" id="mark">Mark all read</button>
       </div>
-    </div>
+    </header>
+    <main>
+      <section class="sidebar">
+        <div id="entries"></div>
+      </section>
+      <section class="viewer">
+        <h2 id="title"></h2>
+        <iframe id="frame" sandbox></iframe>
+      </section>
+    </main>
+    <script>
+      const queryElem = document.getElementById('query'),
+            entriesElem = document.getElementById('entries'),
+            titleElem = document.getElementById('title'),
+            frameElem = document.getElementById('frame'),
+            markElem = document.getElementById('mark');
 
-    <div class="row panel" ng-controller="SearchCtrl">
+      let entries = [], selected = null;
 
-      <div class="large-5 columns">
-        <div>
+      function render() {
+          if (entries.length) {
+              entriesElem.innerHTML = '';
+              for (const entry of entries) {
+                  let favicon = '';
+                  try {
+                      const url = new URL(entry.link, location.href);
+                      url.pathname = '/favicon.ico';
+                      url.search = '';
+                      favicon = url.toString();
+                  } catch {
+                  }
+                  let date = new Date(entry.date);
+                  date = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                  const elem = document.createElement('a');
+                  elem.href = '#';
+                  elem.className = 'entry' + (selected === entry ? ' selected' : '');
+                  elem.innerHTML = `<div class="meta">
+                  <img class="favicon" src="${favicon}" alt="">
+                  ${entry.feed?.title || ''} · ${date}
+                  </div>
+                  <div class="${(entry.tags || []).includes('unread') ? 'unread' : ''}">
+                  ${entry.title || '(untitled)'}
+                  </div>`;
+                  elem.onclick = e => {
+                      e.preventDefault();
+                      selected = entry;
+                      titleElem.innerHTML = entry.link
+                          ? `<a href="${entry.link}" target="_blank" rel="noreferrer">${entry.title || '(untitled)'}</a>`
+                          : (entry.title || '(untitled)');
+                      frameElem.src = entry.content ? `/elfeed/content/${entry.content}` : 'about:blank';
+                      render();
+                  };
+                  entriesElem.appendChild(elem);
+              }
+          } else {
+              entriesElem.innerHTML = '<div id="empty">No results</div>';
+              titleElem.textContent = '';
+              frameElem.src = 'about:blank';
+          }
+      }
 
-          <form ng-submit="update(true)">
-            <input id="query" type="text"
-                   ng-model="query" ng-change="update()"/>
-          </form>
-          <button class="button small" ng-click="markAllRead()">
-            Mark All As Read
-          </button>
+      let updateActive = false, updateStale = false;
+      async function update() {
+          if (updateActive) {
+              updateStale = true;
+          } else {
+              updateActive = true;
+              updateStale = false;
+              try {
+                  const res = await fetch(`/elfeed/search?q=${encodeURIComponent(queryElem.value)}`);
+                  entries = await res.json();
+                  if (selected)
+                      selected = entries.find(e => e.webid === selected.webid);
+                  render();
+              } finally {
+                  updateActive = false;
+                  if (updateStale)
+                      update();
+              }
+          }
+      }
 
-          <ul class="no-bullet">
-            <li class="entry" ng-repeat="entry in entries">
-              <img class="favicon" src="{{entry.favicon}}">
-              <span class="feed-title">
-                {{entry.feed.title}}
-              </span>
-              <time class="secondary label">
-                {{entry.dateString}}
-              </time>
-              <a class="title" href="#" ng-click="show(entry)">
-                <span class="{{entry.classes}}">{{entry.title}}</span>
-              </a>
-            </li>
-            <span class="no-results" ng-show="!entries.length">
-              No results.
-            </span>
-          </ul>
-        </div>
-      </div>
+      let pollTime = 0;
+      async function poll() {
+          for (;;) {
+              try {
+                  const res = await fetch(`/elfeed/update?time=${encodeURIComponent(pollTime)}`);
+                  pollTime = await res.json();
+                  await update();
+              } catch {
+                  await new Promise(r => setTimeout(r, 1000));
+              }
+          }
+      }
 
-      <div class="large-7 columns">
-        <div class="row" ng-show="selected && selected.content">
-          <div class="twelve columns">
-            <h4 class="subheader">
-              <a href="{{selected.link}}" target="_blank">
-                {{selected.title}}
-              </a>
-            </h4>
-            <iframe class="twelve columns panel"
-                    sandbox src="/elfeed/content/{{selected.content}}">
-            </iframe>
-          </div>
-        </div>
-      </div>
+      queryElem.value = new URLSearchParams(location.search).get('q') || '@3-days-old';
+      queryElem.oninput = () => update();
 
-    </div>
+      markElem.onclick = async () => {
+          await fetch('/elfeed/mark-all-read');
+          update();
+      };
 
+      update();
+      poll();
+    </script>
   </body>
 </html>
