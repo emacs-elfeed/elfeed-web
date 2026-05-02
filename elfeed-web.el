@@ -6,7 +6,7 @@
 ;; Maintainer: Karthik Chikmagalur <karthik.chikmagalur@gmail.com>, Ihor Radchenko <yantar92@posteo.net>, Daniel Mendler <mail@daniel-mendler.de>
 ;; URL: https://github.com/emacs-elfeed/elfeed-web
 ;; Version: 3.4.2
-;; Package-Requires: ((emacs "28.1") (compat "30") (elfeed "3.4.2") (simple-httpd "1.5.1"))
+;; Package-Requires: ((emacs "28.1") (compat "31") (elfeed "3.4.2") (simple-httpd "1.5.1"))
 ;; Keywords: network, hypermedia
 
 ;;; Commentary:
@@ -48,6 +48,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'compat)
 (require 'json)
 (require 'simple-httpd)
 (require 'elfeed-db)
@@ -132,7 +133,7 @@
     (with-elfeed-db-visit (entry feed)
       (when (elfeed-search-filter filter entry feed count)
         (push entry results)
-        (cl-incf count)))
+        (incf count)))
     (princ
      (json-encode
       (cl-coerce
